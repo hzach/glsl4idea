@@ -5,9 +5,13 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.ElementColorProvider;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElementFactory;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.text.CharArrayCharSequence;
+import glslplugin.lang.elements.GLSLElementTypes;
 import glslplugin.lang.elements.declarations.GLSLTypeSpecifier;
+import glslplugin.lang.elements.declarations.GLSLTypename;
 import glslplugin.lang.elements.expressions.GLSLExpression;
 import glslplugin.lang.elements.expressions.GLSLFunctionCallExpression;
 import glslplugin.lang.elements.expressions.GLSLParameterList;
@@ -30,9 +34,13 @@ public class GLSLColorProvider implements ElementColorProvider {
     @Nullable
     @Override
     public Color getColorFrom(@NotNull PsiElement psiElement) {
-        if (psiElement instanceof GLSLTypeSpecifier && isColorType(psiElement) && isConstructorCall(psiElement)) {
-            //TODO: fix LineMarker warning (this needs to be registered on leaf nodes only)
-            return getGLSLColorFromExpression(psiElement);
+        if (!(psiElement instanceof LeafPsiElement)) return null;
+        PsiElement parent = psiElement.getParent();
+        if (parent instanceof GLSLTypename) {
+            parent = parent.getParent();
+            if (parent instanceof GLSLTypeSpecifier && isColorType(parent) && isConstructorCall(parent)) {
+                return getGLSLColorFromExpression(parent);
+            }
         }
         return null;
     }
@@ -40,10 +48,12 @@ public class GLSLColorProvider implements ElementColorProvider {
     @Override
     public void setColorTo(@NotNull PsiElement psiElement, @NotNull Color color) {
         final Document document = PsiDocumentManager.getInstance(psiElement.getProject()).getDocument(psiElement.getContainingFile());
-        GLSLParameterList params = getParameterList(psiElement);
+        GLSLTypeSpecifier typeSpecifier = PsiTreeUtil.getParentOfType(psiElement, GLSLTypeSpecifier.class);
+        GLSLParameterList params = typeSpecifier != null ? getParameterList(typeSpecifier) : null;
+
         if (params == null) return;
 
-        GLSLType type = ((GLSLTypeSpecifier) psiElement).getType();
+        GLSLType type = typeSpecifier.getType();
 
         Runnable command = () -> {
             if (type == GLSLTypes.VEC3) {
@@ -164,7 +174,11 @@ public class GLSLColorProvider implements ElementColorProvider {
     }
 
     private Float normalize(Integer rgbVal) {
-        return rgbVal / 255.f;
+        Float normalValue = rgbVal / 255.f;
+        if (normalValue > 1.f) {
+            normalValue = 1.0f;
+        }
+        return  normalValue;
     }
 }
 
