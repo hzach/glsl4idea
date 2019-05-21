@@ -169,12 +169,13 @@ public class GLSLColorProvider implements ElementColorProvider {
 
     private DecimalFormat getDecimalFormat(String text) {
         char[] frac = text.split("\\.")[1].toCharArray();
+        Arrays.fill(frac, '0');
         String decimalFormatString = new String(frac);
         return new DecimalFormat(decimalFormatString.isEmpty() ? "0" : "0." + decimalFormatString);
     }
 
     private Float normalize(Integer rgbVal) {
-        Float normalValue = rgbVal / 255.f;
+        Float normalValue = rgbVal / 254.f;
         if (normalValue > 1.f) {
             normalValue = 1.0f;
         }
